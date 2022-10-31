@@ -152,7 +152,7 @@ class PSMNet(nn.Module):
             elif isinstance(m, nn.Linear):
                 m.bias.data.zero_()
 
-    def forward(self, left, right, gt_left):
+    def forward(self, left, right, gt_left=None):
 
         refimg_fea = self.feature_extraction(left)
         targetimg_fea = self.feature_extraction(right)
