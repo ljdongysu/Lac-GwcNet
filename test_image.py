@@ -14,6 +14,8 @@ from networks.stackhourglass import PSMNet
 import cv2
 from file import Walk, MkdirSimple
 
+DATA_TYPE = ['kitti', 'indemind', 'depth']
+
 def GetArgs():
     parser = argparse.ArgumentParser(description='LaC')
     parser.add_argument('--no_cuda', action='store_true', default=False)
@@ -30,6 +32,7 @@ def GetArgs():
     parser.add_argument('--no_udc', action='store_true', default=False)
     parser.add_argument('--refine', type=str, default='csr')
     parser.add_argument('--output', type=str)
+    parser.add_argument('--bf', type=float, default=14.2)
 
     args = parser.parse_args()
 
@@ -55,6 +58,9 @@ def GetImages(path, flag='kitti'):
     elif 'indemind' == flag:
         left_files = [f for f in paths if 'cam0' in f]
         right_files = [f.replace('/cam0/', '/cam1/') for f in left_files]
+    elif 'depth' == flag:
+        left_files = [f for f in paths if 'left' in f]
+        right_files = [f.replace('/left/', '/right/') for f in left_files]
     else:
         raise Exception("Do not support mode: {}".format(flag))
 
@@ -72,11 +78,16 @@ def disp_to_depth(disp, min_depth, max_depth):
     return scaled_disp, depth
 
 
-def  WriteDepth(depth, limg,  path, name):
-    output_concat =  os.path.join(path, "concat", name)
+def  WriteDepth(depth, limg,  path, name, bf):
+    name = os.path.splitext(name)[0] + ".png"
+    output_concat_color =  os.path.join(path, "concat_color", name)
+    output_concat_gray =  os.path.join(path, "concat_gray", name)
     output_gray =  os.path.join(path, "gray", name)
     output_color =  os.path.join(path, "color", name)
-    MkdirSimple(output_concat)
+    output_depth =  os.path.join(path, "depth", name)
+    MkdirSimple(output_concat_color)
+    MkdirSimple(output_concat_gray)
+    MkdirSimple(output_depth)
     MkdirSimple(output_gray)
     MkdirSimple(output_color)
 
@@ -87,18 +98,38 @@ def  WriteDepth(depth, limg,  path, name):
     predict_np = predict_np.astype(np.uint8)
     color_img = cv2.applyColorMap(predict_np, cv2.COLORMAP_HOT)
     limg_cv = cv2.cvtColor(np.asarray(limg), cv2.COLOR_RGB2BGR)
-    concat_img = np.vstack([limg_cv, color_img])
+    concat_img_color = np.vstack([limg_cv, color_img])
+    predict_np_rgb = np.stack([predict_np, predict_np, predict_np], axis=2)
+    concat_img_gray = np.vstack([limg_cv, predict_np_rgb])
 
-    cv2.imwrite(output_concat, concat_img)
+    # get depth
+    depth_img = bf / predict_np * 100
+
+    depth_img_rest = depth_img.copy()
+    depth_img_R = depth_img_rest.copy()
+    depth_img_R[depth_img_rest > 255] = 255
+    depth_img_rest[depth_img_rest < 255] = 255
+    depth_img_rest -= 255
+    depth_img_G = depth_img_rest.copy()
+    depth_img_G[depth_img_rest > 255] = 255
+    depth_img_rest[depth_img_rest < 255] = 255
+    depth_img_rest -= 255
+    depth_img_B = depth_img_rest.copy()
+    depth_img_B[depth_img_rest > 255] = 255
+
+    predict_np_rgb = np.stack([depth_img_R, depth_img_G, depth_img_B], axis=2)
+    concat_img_depth = np.vstack([limg_cv.astype(np.uint8), predict_np_rgb.astype(np.uint8)])
+
+    cv2.imwrite(output_concat_color, concat_img_color)
+    cv2.imwrite(output_concat_gray, concat_img_gray)
     cv2.imwrite(output_color, color_img)
     cv2.imwrite(output_gray, predict_np)
+    cv2.imwrite(output_depth, concat_img_depth)
 
 def main():
     args = GetArgs()
 
     output_directory = args.output
-    output_dir_concat_color =  os.path.join(output_directory, "concat")
-    MkdirSimple(output_dir_concat_color)
 
     if not args.no_cuda:
         os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
@@ -109,10 +140,12 @@ def main():
     if use_cuda:
         torch.cuda.manual_seed(args.seed)
 
-    left_files, right_files, root_len = GetImages(args.data_path)
+    left_files, right_files, root_len = [], [], []
+    for k in DATA_TYPE:
+        left_files, right_files, root_len = GetImages(args.data_path, k)
 
-    if len(left_files) == 0:
-        left_files, right_files, root_len = GetImages(args.data_path, 'indemind')
+        if len(left_files) != 0:
+            break
 
     affinity_settings = {}
     affinity_settings['win_w'] = args.lsp_width
@@ -161,7 +194,7 @@ def main():
 
         predict_np = pred_disp.squeeze().cpu().numpy()
 
-        WriteDepth(pred_disp, limg,args.output, output_name)
+        WriteDepth(pred_disp, limg,args.output, output_name, args.bf)
 
 
 
