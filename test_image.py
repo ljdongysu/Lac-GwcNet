@@ -14,7 +14,7 @@ from networks.stackhourglass import PSMNet
 import cv2
 from file import Walk, MkdirSimple
 
-DATA_TYPE = ['kitti', 'indemind', 'depth']
+DATA_TYPE = ['kitti', 'indemind', 'depth', 'i18R']
 
 def GetArgs():
     parser = argparse.ArgumentParser(description='LaC')
@@ -61,6 +61,9 @@ def GetImages(path, flag='kitti'):
     elif 'depth' == flag:
         left_files = [f for f in paths if 'left' in f]
         right_files = [f.replace('/left/', '/right/') for f in left_files]
+    elif 'i18R' == flag:
+        left_files = [f for f in paths if '.L' in f]
+        right_files = [f.replace('L/', 'R/').replace('L.', 'R.') for f in left_files]
     else:
         raise Exception("Do not support mode: {}".format(flag))
 
@@ -77,6 +80,22 @@ def disp_to_depth(disp, min_depth, max_depth):
     depth = 1 / scaled_disp
     return scaled_disp, depth
 
+def GetDepthImg(img):
+    depth_img_rest = img.copy()
+    depth_img_R = depth_img_rest.copy()
+    depth_img_R[depth_img_rest > 255] = 255
+    depth_img_rest[depth_img_rest < 255] = 255
+    depth_img_rest -= 255
+    depth_img_G = depth_img_rest.copy()
+    depth_img_G[depth_img_rest > 255] = 255
+    depth_img_rest[depth_img_rest < 255] = 255
+    depth_img_rest -= 255
+    depth_img_B = depth_img_rest.copy()
+    depth_img_B[depth_img_rest > 255] = 255
+    depth_img_rgb = np.stack([depth_img_R, depth_img_G, depth_img_B], axis=2)
+
+
+    return depth_img_rgb.astype(np.uint8)
 
 def  WriteDepth(depth, limg,  path, name, bf):
     name = os.path.splitext(name)[0] + ".png"
@@ -84,10 +103,10 @@ def  WriteDepth(depth, limg,  path, name, bf):
     output_concat_gray =  os.path.join(path, "concat_gray", name)
     output_gray =  os.path.join(path, "gray", name)
     output_color =  os.path.join(path, "color", name)
-    output_depth =  os.path.join(path, "depth", name)
+    output_concat_depth =  os.path.join(path, "concat_depth", name)
     MkdirSimple(output_concat_color)
     MkdirSimple(output_concat_gray)
-    MkdirSimple(output_depth)
+    MkdirSimple(output_concat_depth)
     MkdirSimple(output_gray)
     MkdirSimple(output_color)
 
@@ -103,28 +122,15 @@ def  WriteDepth(depth, limg,  path, name, bf):
     concat_img_gray = np.vstack([limg_cv, predict_np_rgb])
 
     # get depth
-    depth_img = bf / predict_np * 100
-
-    depth_img_rest = depth_img.copy()
-    depth_img_R = depth_img_rest.copy()
-    depth_img_R[depth_img_rest > 255] = 255
-    depth_img_rest[depth_img_rest < 255] = 255
-    depth_img_rest -= 255
-    depth_img_G = depth_img_rest.copy()
-    depth_img_G[depth_img_rest > 255] = 255
-    depth_img_rest[depth_img_rest < 255] = 255
-    depth_img_rest -= 255
-    depth_img_B = depth_img_rest.copy()
-    depth_img_B[depth_img_rest > 255] = 255
-
-    predict_np_rgb = np.stack([depth_img_R, depth_img_G, depth_img_B], axis=2)
-    concat_img_depth = np.vstack([limg_cv.astype(np.uint8), predict_np_rgb.astype(np.uint8)])
+    depth_img = bf / predict_np * 100 # to cm
+    depth_img_rgb = GetDepthImg(depth_img)
+    concat_img_depth = np.vstack([limg_cv, depth_img_rgb])
 
     cv2.imwrite(output_concat_color, concat_img_color)
     cv2.imwrite(output_concat_gray, concat_img_gray)
     cv2.imwrite(output_color, color_img)
     cv2.imwrite(output_gray, predict_np)
-    cv2.imwrite(output_depth, concat_img_depth)
+    cv2.imwrite(output_concat_depth, concat_img_depth)
 
 def main():
     args = GetArgs()
