@@ -97,6 +97,41 @@ def GetDepthImg(img):
 
     return depth_img_rgb.astype(np.uint8)
 
+def  WriteDepthOnnx(depth, limg,  path, name, bf):
+    name = os.path.splitext(name)[0] + ".png"
+    output_concat_color =  os.path.join(path, "concat_color", name)
+    output_concat_gray =  os.path.join(path, "concat_gray", name)
+    output_gray =  os.path.join(path, "gray", name)
+    output_color =  os.path.join(path, "color", name)
+    output_concat_depth =  os.path.join(path, "concat_depth", name)
+    MkdirSimple(output_concat_color)
+    MkdirSimple(output_concat_gray)
+    MkdirSimple(output_concat_depth)
+    MkdirSimple(output_gray)
+    MkdirSimple(output_color)
+
+    predict_np = np.squeeze(np.array(depth))
+
+    disp = depth
+
+    predict_np = predict_np.astype(np.uint8)
+    color_img = cv2.applyColorMap(predict_np, cv2.COLORMAP_HOT)
+    limg_cv = cv2.cvtColor(np.asarray(limg), cv2.COLOR_RGB2BGR)
+    concat_img_color = np.vstack([limg_cv, color_img])
+    predict_np_rgb = np.stack([predict_np, predict_np, predict_np], axis=2)
+    concat_img_gray = np.vstack([limg_cv, predict_np_rgb])
+
+    # get depth
+    depth_img = bf / predict_np * 100 # to cm
+    depth_img_rgb = GetDepthImg(depth_img)
+    concat_img_depth = np.vstack([limg_cv, depth_img_rgb])
+
+    cv2.imwrite(output_concat_color, concat_img_color)
+    cv2.imwrite(output_concat_gray, concat_img_gray)
+    cv2.imwrite(output_color, color_img)
+    cv2.imwrite(output_gray, predict_np)
+    cv2.imwrite(output_concat_depth, concat_img_depth)
+
 def  WriteDepth(depth, limg,  path, name, bf):
     name = os.path.splitext(name)[0] + ".png"
     output_concat_color =  os.path.join(path, "concat_color", name)
