@@ -4,7 +4,7 @@ import numpy as np
 from test_image import WriteDepthOnnx
 from torchvision import transforms
 
-net = ONNXModel("kitti-640.onnx")
+net = ONNXModel("kitti-opset11.onnx")
 # limg = np.array(Image.open("/home/ljx/Code/200sever/work/sunhao/Lac-GwcNet/images1/L/13_1664369833690648.L.jpg").convert('RGB')).astype("float32")
 # limg=np.expand_dims(np.resize(limg,(3,400,640)),0)
 # # limg=np.expand_dims(limg,0)
@@ -12,8 +12,8 @@ net = ONNXModel("kitti-640.onnx")
 # rimg = np.expand_dims(np.resize(rimg,(3,400,640)),0)
 # # rimg = np.expand_dims(rimg,0)
 
-limg_ori = Image.open("/home/ljx/Code/200sever/work/sunhao/Lac-GwcNet/images1/L/13_1664369833690648.L.jpg").convert('RGB')
-rimg_ori = Image.open("/home/ljx/Code/200sever/work/sunhao/Lac-GwcNet/images1/R/13_1664369833690648.R.jpg").convert('RGB')
+limg_ori = Image.open("images1/L/13_1664369833690648.L.jpg").convert('RGB')
+rimg_ori = Image.open("images1/R/13_1664369833690648.R.jpg").convert('RGB')
 
 # why crop
 w, h = limg_ori.size
@@ -35,4 +35,3 @@ rimg=rimg_tensor.cpu().numpy()
 output  = net.forward(limg,rimg)
 limg = np.resize(np.squeeze(limg_ori),(400,640,3))
 WriteDepthOnnx(output,limg,"result/","L/34_1665285574842567.L.jpg",14.2)
-print(1)

@@ -186,9 +186,9 @@ def main():
     torch.onnx.export(
         model.module,
         dummy_input,
-        "kitti-640.onnx",
+        "kitti-opset11.onnx",
         verbose=True,
-        opset_version=16,
+        opset_version=11,
         input_names=input_names,
         output_names=output_names)
 

@@ -78,8 +78,10 @@ class DisparityRegression(nn.Module):
             prob_value = []
             for d in range(-self.win_size, self.win_size + 1):
                 index = max_d + d
-                index[index < 0] = 0
-                index[index > x.shape[1] - 1] = x.shape[1] - 1
+
+                index=torch.where(index<0 , 0 ,index)
+
+                index=torch.where(index > x.shape[1] - 1, (x.shape[1] - 1).to("cuda"),index)
                 d_value.append(index)
 
                 prob = torch.gather(x, dim=1, index=index)

@@ -43,7 +43,9 @@ class AffinityFeature(nn.Module):
         neighbor = torch.cat((all_neighbor[:, :num], all_neighbor[:, num+1:]), dim=1)
         feature = feature.unsqueeze(1)
         affinity = torch.sum(neighbor * feature, dim=2)
-        affinity[affinity < self.cut] = self.cut
+        # affinity[affinity < self.cut] = self.cut
+        self.cut=torch.tensor(self.cut, dtype=torch.float).to("cuda")
+        affinity=torch.where(affinity < self.cut,self.cut,affinity )
 
         return affinity
 
