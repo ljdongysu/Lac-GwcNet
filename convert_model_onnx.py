@@ -191,3 +191,6 @@ def main():
         opset_version=16,
         input_names=input_names,
         output_names=output_names)
+
+if __name__ == '__main__':
+    main()
