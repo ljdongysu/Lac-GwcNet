@@ -8,6 +8,7 @@ from tqdm.contrib import tzip
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
+from time import time
 
 from dataloader import KITTIloader as kt
 from networks.stackhourglass import PSMNet
@@ -15,6 +16,7 @@ import cv2
 from file import Walk, MkdirSimple
 
 DATA_TYPE = ['kitti', 'indemind', 'depth', 'i18R']
+
 
 def GetArgs():
     parser = argparse.ArgumentParser(description='LaC')
@@ -69,6 +71,7 @@ def GetImages(path, flag='kitti'):
 
     return left_files, right_files, root_len
 
+
 def disp_to_depth(disp, min_depth, max_depth):
     """Convert network's sigmoid output into depth prediction
     The formula for this conversion is given in the 'additional considerations'
@@ -79,6 +82,7 @@ def disp_to_depth(disp, min_depth, max_depth):
     scaled_disp = min_disp + (max_disp - min_disp) * disp
     depth = 1 / scaled_disp
     return scaled_disp, depth
+
 
 def GetDepthImg(img):
     depth_img_rest = img.copy()
@@ -94,21 +98,23 @@ def GetDepthImg(img):
     depth_img_B[depth_img_rest > 255] = 255
     depth_img_rgb = np.stack([depth_img_R, depth_img_G, depth_img_B], axis=2)
 
-
     return depth_img_rgb.astype(np.uint8)
 
-def  WriteDepth(depth, limg,  path, name, bf):
+
+def WriteDepth(depth, limg, path, name, bf):
     name = os.path.splitext(name)[0] + ".png"
-    output_concat_color =  os.path.join(path, "concat_color", name)
-    output_concat_gray =  os.path.join(path, "concat_gray", name)
-    output_gray =  os.path.join(path, "gray", name)
-    output_color =  os.path.join(path, "color", name)
-    output_concat_depth =  os.path.join(path, "concat_depth", name)
+    output_concat_color = os.path.join(path, "concat_color", name)
+    output_concat_gray = os.path.join(path, "concat_gray", name)
+    output_gray = os.path.join(path, "gray", name)
+    output_color = os.path.join(path, "color", name)
+    output_concat_depth = os.path.join(path, "concat_depth", name)
+    output_concat = os.path.join(path, "concat", name)
     MkdirSimple(output_concat_color)
     MkdirSimple(output_concat_gray)
     MkdirSimple(output_concat_depth)
     MkdirSimple(output_gray)
     MkdirSimple(output_color)
+    MkdirSimple(output_concat)
 
     predict_np = depth.squeeze().cpu().numpy()
 
@@ -122,15 +128,18 @@ def  WriteDepth(depth, limg,  path, name, bf):
     concat_img_gray = np.vstack([limg_cv, predict_np_rgb])
 
     # get depth
-    depth_img = bf / predict_np * 100 # to cm
+    depth_img = bf / predict_np * 100  # to cm
     depth_img_rgb = GetDepthImg(depth_img)
     concat_img_depth = np.vstack([limg_cv, depth_img_rgb])
+    concat = np.hstack([np.vstack([limg_cv, color_img]), np.vstack([predict_np_rgb, depth_img_rgb])])
 
     cv2.imwrite(output_concat_color, concat_img_color)
     cv2.imwrite(output_concat_gray, concat_img_gray)
     cv2.imwrite(output_color, color_img)
     cv2.imwrite(output_gray, predict_np)
     cv2.imwrite(output_concat_depth, concat_img_depth)
+    cv2.imwrite(output_concat, concat)
+
 
 def main():
     args = GetArgs()
@@ -176,7 +185,7 @@ def main():
         if not os.path.exists(left_image_file) or not os.path.exists(right_image_file):
             continue
 
-        output_name = left_image_file[root_len+1:]
+        output_name = left_image_file[root_len + 1:]
 
         limg = Image.open(left_image_file).convert('RGB')
         rimg = Image.open(right_image_file).convert('RGB')
@@ -185,6 +194,9 @@ def main():
         w, h = limg.size
         # limg = limg.crop((w - 1232, h - 368, w, h))
         # rimg = rimg.crop((w - 1232, h - 368, w, h))
+        # w, h = 320, 240
+        # limg = limg.resize((w, h), Image.ANTIALIAS)
+        # rimg = rimg.resize((w, h), Image.ANTIALIAS)
 
         limg_tensor = transforms.Compose([
             transforms.ToTensor(),
@@ -196,12 +208,13 @@ def main():
         rimg_tensor = rimg_tensor.unsqueeze(0).cuda()
 
         with torch.no_grad():
+            start = time()
             pred_disp = model(limg_tensor, rimg_tensor)
+            # print("use: ", (time() - start))
 
         predict_np = pred_disp.squeeze().cpu().numpy()
 
-        WriteDepth(pred_disp, limg,args.output, output_name, args.bf)
-
+        WriteDepth(pred_disp, limg, args.output, output_name, args.bf)
 
 
 if __name__ == '__main__':
