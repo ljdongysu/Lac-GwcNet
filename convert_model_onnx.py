@@ -97,41 +97,6 @@ def GetDepthImg(img):
 
     return depth_img_rgb.astype(np.uint8)
 
-def  WriteDepthOnnx(depth, limg,  path, name, bf):
-    name = os.path.splitext(name)[0] + ".png"
-    output_concat_color =  os.path.join(path, "concat_color", name)
-    output_concat_gray =  os.path.join(path, "concat_gray", name)
-    output_gray =  os.path.join(path, "gray", name)
-    output_color =  os.path.join(path, "color", name)
-    output_concat_depth =  os.path.join(path, "concat_depth", name)
-    MkdirSimple(output_concat_color)
-    MkdirSimple(output_concat_gray)
-    MkdirSimple(output_concat_depth)
-    MkdirSimple(output_gray)
-    MkdirSimple(output_color)
-
-    predict_np = np.squeeze(np.array(depth))
-
-    disp = depth
-
-    predict_np = predict_np.astype(np.uint8)
-    color_img = cv2.applyColorMap(predict_np, cv2.COLORMAP_HOT)
-    limg_cv = cv2.cvtColor(np.asarray(limg), cv2.COLOR_RGB2BGR)
-    concat_img_color = np.vstack([limg_cv, color_img])
-    predict_np_rgb = np.stack([predict_np, predict_np, predict_np], axis=2)
-    concat_img_gray = np.vstack([limg_cv, predict_np_rgb])
-
-    # get depth
-    depth_img = bf / predict_np * 100 # to cm
-    depth_img_rgb = GetDepthImg(depth_img)
-    concat_img_depth = np.vstack([limg_cv, depth_img_rgb])
-
-    cv2.imwrite(output_concat_color, concat_img_color)
-    cv2.imwrite(output_concat_gray, concat_img_gray)
-    cv2.imwrite(output_color, color_img)
-    cv2.imwrite(output_gray, predict_np)
-    cv2.imwrite(output_concat_depth, concat_img_depth)
-
 def  WriteDepth(depth, limg,  path, name, bf):
     name = os.path.splitext(name)[0] + ".png"
     output_concat_color =  os.path.join(path, "concat_color", name)
@@ -145,7 +110,8 @@ def  WriteDepth(depth, limg,  path, name, bf):
     MkdirSimple(output_gray)
     MkdirSimple(output_color)
 
-    predict_np = depth.squeeze().cpu().numpy()
+    # predict_np = depth.squeeze().cpu().numpy()
+    predict_np = np.squeeze(np.array(depth))
 
     disp = depth
 
@@ -205,39 +171,26 @@ def main():
     ckpt = torch.load(args.load_path)
     model.load_state_dict(ckpt)
 
-    mae = 0
-    op = 0
-    for left_image_file, right_image_file in tzip(left_files, right_files):
-        if not os.path.exists(left_image_file) or not os.path.exists(right_image_file):
-            continue
-
-        output_name = left_image_file[root_len+1:]
-
-        limg = Image.open(left_image_file).convert('RGB')
-        rimg = Image.open(right_image_file).convert('RGB')
-
-        # why crop
-        w, h = limg.size
-        # limg = limg.crop((w - 1232, h - 368, w, h))
-        # rimg = rimg.crop((w - 1232, h - 368, w, h))
-
-        limg_tensor = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])(limg)
-        rimg_tensor = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])(rimg)
-        limg_tensor = limg_tensor.unsqueeze(0).cuda()
-        rimg_tensor = rimg_tensor.unsqueeze(0).cuda()
-
-        with torch.no_grad():
-            pred_disp = model(limg_tensor, rimg_tensor)
-
-        predict_np = pred_disp.squeeze().cpu().numpy()
-
-        WriteDepth(pred_disp, limg,args.output, output_name, args.bf)
-
-
+    #ONNX
+    # print(model.)
+    # print(model.module)
+    #
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    dummy_input = (torch.randn(1, 3, 400, 640, device=device), torch.randn(1, 3, 400, 640, device=device))
+    # print(dummy_input.is_cuda)
+    # dummy_input_right =
+    input_names = ['L','R']
+    # output_names = ['cls_logits', 'bbox_preds', 'anchors']
+    output_names = ['output']
+    module_list=model.module
+    torch.onnx.export(
+        model.module,
+        dummy_input,
+        "kitti-opset11.onnx",
+        verbose=True,
+        opset_version=11,
+        input_names=input_names,
+        output_names=output_names)
 
 if __name__ == '__main__':
     main()

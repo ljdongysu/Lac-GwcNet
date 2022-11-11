@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from networks.U_net import U_Net, U_Net_F, U_Net_F_v2
+from networks.refinement import bilinear_grid_sample
 
 
 class OffsetConv(nn.Module):
@@ -75,7 +76,7 @@ class GetValueV2(nn.Module):
         x_offset = []
 
         for i in range(N):
-            get_x = F.grid_sample(x, torch.stack((p_x[:, :, :, i], p_y[:, :, :, i]), dim=3), mode='bilinear')
+            get_x = bilinear_grid_sample(x, torch.stack((p_x[:, :, :, i], p_y[:, :, :, i]), dim=3))
             x_offset.append(get_x)
 
         x_offset = torch.stack(x_offset, dim=4)
