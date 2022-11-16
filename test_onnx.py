@@ -9,16 +9,15 @@ from torchvision import transforms
 start_time = time.time()
 
 net = ONNXModel("kitti2015-opset11.onnx")
-# limg = np.array(Image.open("/home/ljx/Code/200sever/work/sunhao/Lac-GwcNet/images1/L/13_1664369833690648.L.jpg").convert('RGB')).astype("float32")
-# limg=np.expand_dims(np.resize(limg,(3,400,640)),0)
-# # limg=np.expand_dims(limg,0)
-# rimg = np.array(Image.open("/home/ljx/Code/200sever/work/sunhao/Lac-GwcNet/images1/R/13_1664369833690648.R.jpg").convert('RGB')).astype("float32")
-# rimg = np.expand_dims(np.resize(rimg,(3,400,640)),0)
-# # rimg = np.expand_dims(rimg,0)
 
+end_time = time.time()
+print("load time :",end_time-start_time)
+
+start_time = time.time()
 limg_ori = Image.open("images1/L/13_1664369833690648.L.jpg").convert('RGB')
 rimg_ori = Image.open("images1/R/13_1664369833690648.R.jpg").convert('RGB')
-
+end_time = time.time()
+print("load time :",end_time-start_time)
 # why crop
 w, h = limg_ori.size
 # limg = limg.crop((w - 1232, h - 368, w, h))
@@ -36,9 +35,13 @@ rimg_tensor = rimg_tensor.unsqueeze(0).cuda()
 limg=limg_tensor.cpu().numpy()
 rimg=rimg_tensor.cpu().numpy()
 
-output  = net.forward(limg,rimg)
 
-end_time = time.time()
-print(end_time-start_time)
+
+#测试时间时用了for循环，所以表格中不是第一次时间，是跑起来的一个状态
+start_time_inter = time.time()
+output = net.forward(limg, rimg)
+end_time_inter = time.time()
+print("interface time :",end_time_inter-start_time_inter)
+
 limg = np.resize(np.squeeze(limg_ori),(400,640,3))
 WriteDepthOnnx(output,limg,"result/","L/34_1665285574842567.L.jpg",14.2)

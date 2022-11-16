@@ -1,4 +1,6 @@
 import argparse
+import time
+
 import torch
 import torch.nn as nn
 from torchvision import transforms
@@ -194,6 +196,7 @@ def main():
     affinity_settings['dilation'] = args.lsp_dilation
     udc = not args.no_udc
 
+    load_time_start = time.time()
     model = PSMNet(maxdisp=args.max_disp, struct_fea_c=args.lsp_channel, fuse_mode=args.lsp_mode,
                    affinity_settings=affinity_settings, udc=udc, refine=args.refine)
     model = nn.DataParallel(model)
@@ -204,6 +207,8 @@ def main():
 
     ckpt = torch.load(args.load_path)
     model.load_state_dict(ckpt)
+    load_time_end = time.time()
+    print("load time: ", load_time_end-load_time_start)
 
     mae = 0
     op = 0
@@ -230,9 +235,12 @@ def main():
         limg_tensor = limg_tensor.unsqueeze(0).cuda()
         rimg_tensor = rimg_tensor.unsqueeze(0).cuda()
 
+
+        start_time_inter = time.time()
         with torch.no_grad():
             pred_disp = model(limg_tensor, rimg_tensor)
-        torch.arange()
+        end_time_inter = time.time()
+        print("interface time :", end_time_inter-start_time_inter)
 
         predict_np = pred_disp.squeeze().cpu().numpy()
 
