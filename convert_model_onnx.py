@@ -176,18 +176,17 @@ def main():
     # print(model.module)
     #
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # dummy_input = (torch.randn(1, 3, 400, 640, device=device), torch.randn(1, 3, 400, 640, device=device))
-    dummy_input = (torch.randn(1, 3, 400, 640, device=device), torch.randn(1, 32, 100, 160, device=device), torch.randn(1, 32, 100, 160, device=device))
+    dummy_input = (torch.randn(1, 3, 400, 640, device=device), torch.randn(1, 3, 400, 640, device=device))
     # print(dummy_input.is_cuda)
     # dummy_input_right =
-    input_names = ['L','feature_L', 'feature_R']
+    input_names = ['L','R']
     # output_names = ['cls_logits', 'bbox_preds', 'anchors']
     output_names = ['output']
     module_list=model.module
     torch.onnx.export(
         model.module,
         dummy_input,
-        "kitti-feature_fuse.onnx",
+        "kitti-opset11.onnx",
         verbose=True,
         opset_version=11,
         input_names=input_names,
