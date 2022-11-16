@@ -1,6 +1,7 @@
 import time
 
-from onnxmodel import ONNXModel
+from onnxmodel_feature import ONNXModel as ONNXModelFeature
+from onnxmodel_fuse import ONNXModel as ONNXModelFuse
 from PIL import Image
 import numpy as np
 from test_image import WriteDepthOnnx
@@ -8,7 +9,8 @@ from torchvision import transforms
 
 start_time = time.time()
 
-net = ONNXModel("kitti2015-opset11.onnx")
+net_feature = ONNXModelFeature("kitti-feature_extraction.onnx")
+net_fuse = ONNXModelFuse("kitti-feature_fuse.onnx")
 # limg = np.array(Image.open("/home/ljx/Code/200sever/work/sunhao/Lac-GwcNet/images1/L/13_1664369833690648.L.jpg").convert('RGB')).astype("float32")
 # limg=np.expand_dims(np.resize(limg,(3,400,640)),0)
 # # limg=np.expand_dims(limg,0)
@@ -36,9 +38,14 @@ rimg_tensor = rimg_tensor.unsqueeze(0).cuda()
 limg=limg_tensor.cpu().numpy()
 rimg=rimg_tensor.cpu().numpy()
 
-output  = net.forward(limg,rimg)
+
+output_feature_l  = net_feature.forward(limg)
+output_feature_r  = net_feature.forward(rimg)
+
+output=net_fuse.forward(limg,output_feature_l[0],output_feature_r[0])
 
 end_time = time.time()
 print(end_time-start_time)
+
 limg = np.resize(np.squeeze(limg_ori),(400,640,3))
 WriteDepthOnnx(output,limg,"result/","L/34_1665285574842567.L.jpg",14.2)

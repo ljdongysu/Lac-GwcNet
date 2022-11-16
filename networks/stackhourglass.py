@@ -152,10 +152,15 @@ class PSMNet(nn.Module):
             elif isinstance(m, nn.Linear):
                 m.bias.data.zero_()
 
-    def forward(self, left, right, gt_left=None):
+    def forward(self, left, feature_L, feature_R, gt_left=None):
+        print(left.size()[2])
+        print(left.size()[3])
 
-        refimg_fea = self.feature_extraction(left)
-        targetimg_fea = self.feature_extraction(right)
+        # refimg_fea = self.feature_extraction(left)
+        # targetimg_fea = self.feature_extraction(right)
+
+        refimg_fea = feature_L
+        targetimg_fea = feature_R
 
         #matching
         cost = torch.zeros(refimg_fea.size()[0], refimg_fea.size()[1]*2, self.maxdisp//4,
@@ -200,7 +205,7 @@ class PSMNet(nn.Module):
             pred2 = DisparityRegression(self.maxdisp, win_size=win_s)(distribute2)
 
         cost3 = self.classif3(out3)
-        cost3 = F.interpolate(cost3, [self.maxdisp, left.size()[2], left.size()[3]], mode='trilinear', align_corners=True)
+        cost3 = F.interpolate(cost3, [self.maxdisp, 400, 640], mode='trilinear', align_corners=True)
         cost3 = torch.squeeze(cost3, 1)
         distribute3 = F.softmax(cost3, dim=1)
         pred3 = DisparityRegression(self.maxdisp, win_size=win_s)(distribute3)
@@ -239,3 +244,4 @@ class PSMNet(nn.Module):
                 return predr
             else:
                 return pred3
+        return refimg_fea

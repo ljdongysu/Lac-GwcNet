@@ -232,6 +232,7 @@ def main():
 
         with torch.no_grad():
             pred_disp = model(limg_tensor, rimg_tensor)
+        torch.arange()
 
         predict_np = pred_disp.squeeze().cpu().numpy()
 
