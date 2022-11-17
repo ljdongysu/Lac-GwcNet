@@ -81,7 +81,7 @@ class DisparityRegression(nn.Module):
 
                 index=torch.where(index<0 , 0 ,index)
 
-                index=torch.where(index > x.shape[1] - 1, (x.shape[1] - 1).to("cuda"),index)
+                index = torch.where(index > x.shape[1] - 1, torch.tensor(x.shape[1] - 1).cuda(), index)
                 d_value.append(index)
 
                 prob = torch.gather(x, dim=1, index=index)
