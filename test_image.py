@@ -62,7 +62,7 @@ def GetImages(path, flag='kitti'):
         right_files = [f.replace('/cam0/', '/cam1/') for f in left_files]
     elif 'depth' == flag:
         left_files = [f for f in paths if 'left' in f]
-        right_files = [f.replace('/left/', '/right/') for f in left_files]
+        right_files = [f.replace('left', 'right') for f in left_files]
     elif 'i18R' == flag:
         left_files = [f for f in paths if '.L' in f]
         right_files = [f.replace('L/', 'R/').replace('L.', 'R.') for f in left_files]
@@ -139,6 +139,51 @@ def WriteDepth(depth, limg, path, name, bf):
     cv2.imwrite(output_concat_depth, concat_img_depth)
     cv2.imwrite(output_concat, concat)
 
+def readImg(left_file, right_file):
+    # limg = Image.open(left_file).convert('RGB')
+    # rimg = Image.open(right_file).convert('RGB')
+
+    left_img = cv2.imread(left_file)
+    right_img = cv2.imread(right_file)
+
+    in_h, in_w = left_img.shape[:2]
+
+    if in_h % 8 != 0:
+        pad_h = in_h % 8
+        left_img = np.pad(left_img, ((pad_h // 2, pad_h // 2), (0, 0), (0, 0)), mode='reflect')
+        right_img = np.pad(right_img, ((pad_h // 2, pad_h // 2), (0, 0), (0, 0)), mode='reflect')
+
+    if in_w % 8 != 0:
+        pad_w = in_w % 8
+        left_img = np.pad(left_img, ((0, 0), (pad_w // 2, pad_w // 2), (0, 0)), mode='reflect')
+        right_img = np.pad(right_img, ((0, 0), (pad_w // 2, pad_w // 2), (0, 0)), mode='reflect')
+
+    in_h, in_w = left_img.shape[:2]
+
+    if in_h % 8 != 0:
+        pad_h = in_h % 8
+        left_img = np.pad(left_img, ((pad_h // 2, pad_h // 2), (0, 0), (0, 0)), mode='reflect')
+        right_img = np.pad(right_img, ((pad_h // 2, pad_h // 2), (0, 0), (0, 0)), mode='reflect')
+
+    if in_w % 8 != 0:
+        pad_w = in_w % 8
+        left_img = np.pad(left_img, ((0, 0), (pad_w // 2, pad_w // 2), (0, 0)), mode='reflect')
+        right_img = np.pad(right_img, ((0, 0), (pad_w // 2, pad_w // 2), (0, 0)), mode='reflect')
+
+    in_h, in_w = left_img.shape[:2]
+    # Resize image in case the GPU memory overflows
+    eval_h, eval_w = (in_h, in_w)
+    assert eval_h % 8 == 0, "input height should be divisible by 8"
+    assert eval_w % 8 == 0, "input width should be divisible by 8"
+
+    limg = cv2.resize(left_img, (eval_w, eval_h), interpolation=cv2.INTER_LINEAR)
+    rimg = cv2.resize(right_img, (eval_w, eval_h), interpolation=cv2.INTER_LINEAR)
+
+    limg = cv2.cvtColor(limg, cv2.COLOR_BGRA2RGB)
+    rimg = cv2.cvtColor(rimg, cv2.COLOR_BGRA2RGB)
+
+
+    return limg, rimg
 
 def main():
     args = GetArgs()
@@ -185,17 +230,7 @@ def main():
             continue
 
         output_name = left_image_file[root_len + 1:]
-
-        limg = Image.open(left_image_file).convert('RGB')
-        rimg = Image.open(right_image_file).convert('RGB')
-
-        # why crop
-        w, h = limg.size
-        # limg = limg.crop((w - 1232, h - 368, w, h))
-        # rimg = rimg.crop((w - 1232, h - 368, w, h))
-        # w, h = 320, 240
-        # limg = limg.resize((w, h), Image.ANTIALIAS)
-        # rimg = rimg.resize((w, h), Image.ANTIALIAS)
+        limg, rimg = readImg(left_image_file, right_image_file)
 
         limg_tensor = transforms.Compose([
             transforms.ToTensor(),
