@@ -37,7 +37,7 @@ torch.manual_seed(args.seed)
 if cuda:
     torch.cuda.manual_seed(args.seed)
 
-all_limg, all_rimg, all_ldisp, test_limg, test_rimg, test_ldisp = sf.sf_loader(args.data_path)
+all_limg, all_rimg, all_ldisp, test_limg, test_rimg, test_ldisp = sf.sf_loader_walk(args.data_path)
 
 trainLoader = torch.utils.data.DataLoader(
     sf.myDataset(all_limg, all_rimg, all_ldisp, training=True),

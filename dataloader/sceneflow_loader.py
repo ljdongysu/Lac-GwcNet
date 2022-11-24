@@ -5,6 +5,7 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 import numpy as np
 import random
+from file import Walk
 
 IMG_EXTENSIONS= [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
@@ -15,6 +16,33 @@ IMG_EXTENSIONS= [
 def is_image_file(filename):
     return any(filename.endswith(extension) for extension in IMG_EXTENSIONS)
 
+
+def sf_loader_walk(filepath):
+    all_file = Walk(filepath, ['jpg', 'jpeg', 'png', 'bmp', 'pfm'])
+
+    all_left_img = [f for f in all_file if "/left/" in f and "/frames_cleanpass/" in f]
+
+    left_img = []
+    right_img = []
+    left_disp = []
+    test_left_img = []
+    test_right_img = []
+    test_left_disp = []
+
+    for f in all_left_img:
+        r = f.replace('left/', 'right/')
+        d = os.path.splitext(f.replace('frames_cleanpass/', 'disparity/'))[0] + '.pfm'
+        if r in all_file and d in all_file:
+            if '/TEST/' in f:
+                test_left_img.append(f)
+                test_right_img.append(r)
+                test_left_disp.append(d)
+            else:
+                left_img.append(f)
+                right_img.append(r)
+                left_disp.append(d)
+
+    return left_img, right_img, left_disp, test_left_img, test_right_img, test_left_disp
 
 def sf_loader(filepath):
 
