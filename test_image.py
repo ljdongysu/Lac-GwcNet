@@ -105,6 +105,7 @@ def WriteDepth(depth, limg, path, name, bf):
     output_concat_color = os.path.join(path, "concat_color", name)
     output_concat_gray = os.path.join(path, "concat_gray", name)
     output_gray = os.path.join(path, "gray", name)
+    output_depth = os.path.join(path, "depth", name)
     output_color = os.path.join(path, "color", name)
     output_concat_depth = os.path.join(path, "concat_depth", name)
     output_concat = os.path.join(path, "concat", name)
@@ -112,22 +113,23 @@ def WriteDepth(depth, limg, path, name, bf):
     MkdirSimple(output_concat_gray)
     MkdirSimple(output_concat_depth)
     MkdirSimple(output_gray)
+    MkdirSimple(output_depth)
     MkdirSimple(output_color)
     MkdirSimple(output_concat)
 
     predict_np = depth.squeeze().cpu().numpy()
 
-    disp = depth
+    depth_img = bf / predict_np * 100  # to cm
 
-    predict_np = predict_np.astype(np.uint8)
-    color_img = cv2.applyColorMap(predict_np, cv2.COLORMAP_HOT)
-    limg_cv = cv2.cvtColor(np.asarray(limg), cv2.COLOR_RGB2BGR)
+    predict_np_int = predict_np.astype(np.uint8)
+    color_img = cv2.applyColorMap(predict_np_int, cv2.COLORMAP_HOT)
+    limg_cv = limg  # cv2.cvtColor(np.asarray(limg), cv2.COLOR_RGB2BGR)
     concat_img_color = np.vstack([limg_cv, color_img])
     predict_np_rgb = np.stack([predict_np, predict_np, predict_np], axis=2)
     concat_img_gray = np.vstack([limg_cv, predict_np_rgb])
 
     # get depth
-    depth_img = bf / predict_np * 100  # to cm
+    depth_img_temp = bf / predict_np_int * 100  # to cm
     depth_img_rgb = GetDepthImg(depth_img)
     concat_img_depth = np.vstack([limg_cv, depth_img_rgb])
     concat = np.hstack([np.vstack([limg_cv, color_img]), np.vstack([predict_np_rgb, depth_img_rgb])])
@@ -136,8 +138,10 @@ def WriteDepth(depth, limg, path, name, bf):
     cv2.imwrite(output_concat_gray, concat_img_gray)
     cv2.imwrite(output_color, color_img)
     cv2.imwrite(output_gray, predict_np)
+    cv2.imwrite(output_depth, depth_img_rgb)
     cv2.imwrite(output_concat_depth, concat_img_depth)
     cv2.imwrite(output_concat, concat)
+
 
 def readImg(left_file, right_file):
     # limg = Image.open(left_file).convert('RGB')
