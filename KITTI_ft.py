@@ -30,6 +30,7 @@ parser.add_argument('--lsp_height', type=int, default=3)
 parser.add_argument('--lsp_dilation', type=list, default=[1, 2, 4, 8])
 parser.add_argument('--lsp_mode', type=str, default='separate')
 parser.add_argument('--lsp_channel', type=int, default=4)
+parser.add_argument('--save_step', type=int, default=50)
 parser.add_argument('--no_udc', action='store_true', default=False)
 parser.add_argument('--refine', type=str, default='csr')
 args = parser.parse_args()
@@ -51,11 +52,11 @@ else:
 
 trainLoader = torch.utils.data.DataLoader(
     kt.myDataset(all_limg, all_rimg, all_ldisp, training=True),
-    batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=False)
+    batch_size=args.batch_size, shuffle=True, num_workers=10, drop_last=False)
 
 testLoader = torch.utils.data.DataLoader(
     kt.myDataset(test_limg, test_rimg, test_ldisp, training=False),
-    batch_size=1, shuffle=False, num_workers=2, drop_last=False)
+    batch_size=1, shuffle=False, num_workers=5, drop_last=False)
 
 affinity_settings = {}
 affinity_settings['win_w'] = args.lsp_width
@@ -70,7 +71,22 @@ print('Number of model parameters: {}'.format(sum([p.data.nelement() for p in mo
 if cuda:
     model.cuda()
 
-checkpoint = torch.load(args.load_path)
+
+def locad_model(file):
+    ckpt = torch.load(file)
+
+    if 'net' in ckpt.keys():
+        model_state_dict = ckpt['net']
+        # model_state_dict = OrderedDict()
+        # for k, v in ckpt['net'].items():
+        #     name = k[7:]  # remove `module.`
+        #     model_state_dict[name] = v
+    else:
+        model_state_dict = ckpt
+
+    return model_state_dict
+
+checkpoint = locad_model(args.load_path)
 model.load_state_dict(checkpoint)
 
 optimizer = optim.Adam(model.parameters(), lr=0.1, betas=(0.9, 0.999))
@@ -157,14 +173,14 @@ def main():
         avg_test_loss = total_test_loss / len(testLoader)
         print('Epoch %d total test loss = %.3f' % (epoch, avg_test_loss))
 
-        if epoch % 50 == 0:
+        if epoch % args.save_step == 0:
             state = {'net': model.state_dict(),
                      'optimizer': optimizer.state_dict(),
                      'epoch': epoch}
 
             if not os.path.exists(args.save_path):
-                os.mkdir(args.save_path)
-            save_model_path = args.save_path + 'checkpoint_{}.tar'.format(epoch)
+                os.makedirs(args.save_path)
+            save_model_path = os.path.join(args.save_path, 'checkpoint_{}.tar'.format(epoch))
             torch.save(state, save_model_path)
 
         torch.cuda.empty_cache()

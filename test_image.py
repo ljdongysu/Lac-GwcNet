@@ -189,6 +189,20 @@ def readImg(left_file, right_file):
 
     return limg, rimg
 
+def locad_model(file):
+    ckpt = torch.load(file)
+
+    if 'net' in ckpt.keys():
+        model_state_dict = ckpt['net']
+        # model_state_dict = OrderedDict()
+        # for k, v in ckpt['net'].items():
+        #     name = k[7:]  # remove `module.`
+        #     model_state_dict[name] = v
+    else:
+        model_state_dict = ckpt
+
+    return model_state_dict
+
 def main():
     args = GetArgs()
 
@@ -224,7 +238,8 @@ def main():
         model.cuda()
     model.eval()
 
-    ckpt = torch.load(args.load_path)
+
+    ckpt = locad_model(args.load_path)
     model.load_state_dict(ckpt)
 
     mae = 0
