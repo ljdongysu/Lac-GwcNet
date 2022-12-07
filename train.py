@@ -162,6 +162,8 @@ def main():
         adjust_learning_rate(optimizer, epoch)
 
         for batch_id, (imgL, imgR, disp_L) in enumerate(tqdm(trainLoader)):
+            if batch_id % args.iter == 0 and batch_id != 0:
+                break
             if imgL is None:
                 continue
             train_loss = train(imgL, imgR, disp_L)
