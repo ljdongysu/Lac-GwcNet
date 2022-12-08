@@ -180,12 +180,12 @@ def main():
             os.makedirs(args.save_path)
         save_model_path = os.path.join(args.save_path, 'checkpoint_{}.tar'.format(epoch))
         torch.save(state, save_model_path)
-
-        for batch_id, (imgL, imgR, disp_L) in enumerate(tqdm(testLoader)):
-            test_loss = test(imgL, imgR, disp_L)
-            total_test_loss += test_loss
-        avg_test_loss = total_test_loss / len(testLoader)
-        print('Epoch %d total test loss = %.3f' % (epoch, avg_test_loss))
+        #
+        # for batch_id, (imgL, imgR, disp_L) in enumerate(tqdm(testLoader)):
+        #     test_loss = test(imgL, imgR, disp_L)
+        #     total_test_loss += test_loss
+        # avg_test_loss = total_test_loss / len(testLoader)
+        # print('Epoch %d total test loss = %.3f' % (epoch, avg_test_loss))
 
 
         torch.cuda.empty_cache()

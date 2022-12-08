@@ -4,6 +4,7 @@ import glob
 import numpy as np
 from PIL import Image, ImageEnhance
 from typing import Optional
+import torchvision.transforms as transforms
 
 from torch.utils.data import Dataset
 
@@ -182,6 +183,9 @@ class CREStereoDataset(Dataset):
         )
         self.rng = np.random.RandomState(0)
         self.eval_mode = eval_mode
+        self.img_transorm = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
     def get_disp(self, path):
         disp = cv2.imread(path, cv2.IMREAD_UNCHANGED)
@@ -251,8 +255,8 @@ class CREStereoDataset(Dataset):
             disp_mask = (left_disp < float(self.augmentor.max_disp / resize_scale)) & (left_disp > 0)
             disp_mask = disp_mask.astype("float32")
 
-        left_img = left_img.transpose(2, 0, 1).astype("uint8")
-        right_img = right_img.transpose(2, 0, 1).astype("uint8")
+        left_img = self.img_transorm(left_img)
+        right_img = self.img_transorm(right_img)
 
         return left_img, right_img, left_disp
 
