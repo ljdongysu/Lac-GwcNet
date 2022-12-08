@@ -251,14 +251,22 @@ def main():
         output_name = left_image_file[root_len + 1:]
         limg, rimg = readImg(left_image_file, right_image_file)
 
-        limg_tensor = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])(limg)
-        rimg_tensor = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])(rimg)
-        limg_tensor = limg_tensor.unsqueeze(0).cuda()
-        rimg_tensor = rimg_tensor.unsqueeze(0).cuda()
+        # limg_tensor = transforms.Compose([
+        #     transforms.ToTensor(),
+        #     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])(limg)
+        # rimg_tensor = transforms.Compose([
+        #     transforms.ToTensor(),
+        #     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])(rimg)
+        # limg_tensor = limg_tensor.unsqueeze(0).cuda()
+        # rimg_tensor = rimg_tensor.unsqueeze(0).cuda()
+
+        imgL = limg.transpose(2, 0, 1)
+        imgR = rimg.transpose(2, 0, 1)
+        imgL = np.ascontiguousarray(imgL[None, :, :, :])
+        imgR = np.ascontiguousarray(imgR[None, :, :, :])
+
+        limg_tensor = torch.tensor(imgL.astype("float32")).cuda()
+        rimg_tensor = torch.tensor(imgR.astype("float32")).cuda()
 
         with torch.no_grad():
             start = time()
