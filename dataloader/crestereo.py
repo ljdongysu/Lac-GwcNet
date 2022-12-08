@@ -255,8 +255,8 @@ class CREStereoDataset(Dataset):
             disp_mask = (left_disp < float(self.augmentor.max_disp / resize_scale)) & (left_disp > 0)
             disp_mask = disp_mask.astype("float32")
 
-        left_img = self.img_transorm(left_img)
-        right_img = self.img_transorm(right_img)
+        left_img = left_img.transpose(2, 0, 1).astype("uint8")
+        right_img = right_img.transpose(2, 0, 1).astype("uint8")
 
         return left_img, right_img, left_disp
 

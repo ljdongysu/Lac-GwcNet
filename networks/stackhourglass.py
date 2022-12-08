@@ -153,6 +153,12 @@ class PSMNet(nn.Module):
                 m.bias.data.zero_()
 
     def forward(self, left, right, gt_left=None):
+        left = left / 255.0
+        right = right / 255.0
+        left = 2 * left - 1.0
+        right = 2 * right - 1.0
+        left = left.contiguous()
+        right = right.contiguous()
 
         refimg_fea = self.feature_extraction(left)
         targetimg_fea = self.feature_extraction(right)
