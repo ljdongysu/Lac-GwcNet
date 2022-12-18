@@ -102,6 +102,7 @@ def GetDepthImg(img):
 
     return depth_img_rgb.astype(np.uint8)
 
+
 def WriteDepth(depth, limg, path, name, bf):
     name = os.path.splitext(name)[0] + ".png"
     output_concat_color = os.path.join(path, "concat_color", name)
@@ -188,8 +189,8 @@ def readImg(left_file, right_file):
     limg = cv2.cvtColor(limg, cv2.COLOR_BGRA2RGB)
     rimg = cv2.cvtColor(rimg, cv2.COLOR_BGRA2RGB)
 
-
     return limg, rimg
+
 
 def locad_model(file):
     ckpt = torch.load(file)
@@ -204,6 +205,7 @@ def locad_model(file):
         model_state_dict = ckpt
 
     return model_state_dict
+
 
 def main():
     args = GetArgs()
@@ -241,11 +243,10 @@ def main():
         model.cuda()
     model.eval()
 
-
     ckpt = locad_model(args.load_path)
     model.load_state_dict(ckpt)
     load_time_end = time.time()
-    print("load time: ", load_time_end-load_time_start)
+    print("load time: ", load_time_end - load_time_start)
 
     mae = 0
     op = 0
@@ -273,14 +274,13 @@ def main():
         limg_tensor = torch.tensor(imgL.astype("float32")).cuda()
         rimg_tensor = torch.tensor(imgR.astype("float32")).cuda()
 
-
         start_time_inter = time.time()
         with torch.no_grad():
             start = time()
             pred_disp = model(limg_tensor, rimg_tensor)
 
-          end_time_inter = time.time()
-          print("interface time :", end_time_inter-start_time_inter)
+            end_time_inter = time.time()
+            print("interface time :", end_time_inter - start_time_inter)
 
         predict_np = pred_disp.squeeze().cpu().numpy()
 
