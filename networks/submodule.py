@@ -80,7 +80,6 @@ class DisparityRegression(nn.Module):
                 index = max_d + d
 
                 index=torch.where(index<0 , 0 ,index)
-
                 index = torch.where(index > x.shape[1] - 1, torch.tensor(x.shape[1] - 1).cuda(), index)
                 d_value.append(index)
 

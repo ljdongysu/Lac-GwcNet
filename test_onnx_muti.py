@@ -1,23 +1,29 @@
 import time
 
-from onnxmodel import ONNXModel
+from onnxmodel_feature import ONNXModel as ONNXModelFeature
+from onnxmodel_fuse import ONNXModel as ONNXModelFuse
 from PIL import Image
 import numpy as np
 from test_image import WriteDepthOnnx
 from torchvision import transforms
 
-start_time = time.time()
+load_start_time = time.time()
 
-net = ONNXModel("kitti2015-opset11.onnx")
 
-end_time = time.time()
-print("load time :",end_time-start_time)
+net_feature = ONNXModelFeature("kitti-feature_extraction.onnx")
+net_fuse = ONNXModelFuse("kitti-feature_fuse.onnx")
+load_end_time = time.time()
+print("load time:", load_end_time-load_start_time)
+# limg = np.array(Image.open("/home/ljx/Code/200sever/work/sunhao/Lac-GwcNet/images1/L/13_1664369833690648.L.jpg").convert('RGB')).astype("float32")
+# limg=np.expand_dims(np.resize(limg,(3,400,640)),0)
+# # limg=np.expand_dims(limg,0)
+# rimg = np.array(Image.open("/home/ljx/Code/200sever/work/sunhao/Lac-GwcNet/images1/R/13_1664369833690648.R.jpg").convert('RGB')).astype("float32")
+# rimg = np.expand_dims(np.resize(rimg,(3,400,640)),0)
+# # rimg = np.expand_dims(rimg,0)
 
-start_time = time.time()
 limg_ori = Image.open("images1/L/13_1664369833690648.L.jpg").convert('RGB')
 rimg_ori = Image.open("images1/R/13_1664369833690648.R.jpg").convert('RGB')
-end_time = time.time()
-print("load time :",end_time-start_time)
+
 # why crop
 w, h = limg_ori.size
 # limg = limg.crop((w - 1232, h - 368, w, h))
@@ -36,12 +42,15 @@ limg=limg_tensor.cpu().numpy()
 rimg=rimg_tensor.cpu().numpy()
 
 
+output_feature_l  = net_feature.forward(limg)
+output_feature_r  = net_feature.forward(rimg)
 
 #测试时间时用了for循环，所以表格中不是第一次时间，是跑起来的一个状态
-start_time_inter = time.time()
-output = net.forward(limg, rimg)
-end_time_inter = time.time()
-print("interface time :",end_time_inter-start_time_inter)
+inter_time_start = time.time()
+output=net_fuse.forward(limg,output_feature_l[0],output_feature_r[0])
+
+end_time_start = time.time()
+print(end_time_start-inter_time_start)
 
 limg = np.resize(np.squeeze(limg_ori),(400,640,3))
 WriteDepthOnnx(output,limg,"result/","L/34_1665285574842567.L.jpg",14.2)
