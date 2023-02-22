@@ -10,7 +10,7 @@ from tqdm.contrib import tzip
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
-from time import time
+import time
 
 from dataloader import KITTIloader as kt
 from networks.stackhourglass import PSMNet
@@ -44,7 +44,11 @@ def GetArgs():
 
 
 def GetImages(path, flag='kitti'):
-    if os.path.isfile(path):
+    file_target = os.path.join(path, 'all.txt')
+    if os.path.exists(file_target):
+        paths = [os.path.join(path, f.strip()) for f in open(file_target).readlines()]
+        root_len = len(path.rstrip('/'))
+    elif os.path.isfile(path):
         # Only testing on a single image
         paths = [path]
         root_len = len(os.path.dirname(paths).rstrip('/'))
@@ -102,45 +106,67 @@ def GetDepthImg(img):
 
     return depth_img_rgb.astype(np.uint8)
 
+def ScaleDepth(depth, bits=1):
+    depth_min = depth.min()
+    depth_max = depth.max()
+
+    max_val = (2**(8*bits))-1
+
+    if (depth_max - depth_min) > np.finfo("float").eps:
+        out = max_val * (depth - depth_min) / (depth_max - depth_min)
+    else:
+        out = 0
+
+    if bits == 1:
+        out = out.astype("uint8")
+    elif bits == 2:
+        out = out.astype("uint16")
+
+    return out
 
 def WriteDepth(depth, limg, path, name, bf):
     name = os.path.splitext(name)[0] + ".png"
     output_concat_color = os.path.join(path, "concat_color", name)
     output_concat_gray = os.path.join(path, "concat_gray", name)
-    output_gray = os.path.join(path, "gray", name)
+    name_png = os.path.splitext(name)[0] + ".png"
+    output_gray = os.path.join(path, "gray", name_png)
     output_depth = os.path.join(path, "depth", name)
     output_color = os.path.join(path, "color", name)
     output_concat_depth = os.path.join(path, "concat_depth", name)
     output_concat = os.path.join(path, "concat", name)
-    MkdirSimple(output_concat_color)
-    MkdirSimple(output_concat_gray)
-    MkdirSimple(output_concat_depth)
     MkdirSimple(output_gray)
-    MkdirSimple(output_depth)
-    MkdirSimple(output_color)
-    MkdirSimple(output_concat)
 
     predict_np = depth.squeeze().cpu().numpy()
 
-    depth_img = bf / predict_np * 100  # to cm
+    depth_img_float = bf / predict_np * 100  # to cm
 
-    predict_np_int = predict_np.astype(np.uint8)
-    color_img = cv2.applyColorMap(predict_np_int, cv2.COLORMAP_HOT)
+    depth_img = ScaleDepth(depth_img_float, bits=2)
+    cv2.imwrite(output_gray, depth_img)
+    return
+
+    depth_img_int8 = ScaleDepth(depth_img_float, bits=1)
+
+    color_img = cv2.applyColorMap(depth_img_int8, cv2.COLORMAP_HOT)
     limg_cv = limg  # cv2.cvtColor(np.asarray(limg), cv2.COLOR_RGB2BGR)
     concat_img_color = np.vstack([limg_cv, color_img])
     predict_np_rgb = np.stack([predict_np, predict_np, predict_np], axis=2)
     concat_img_gray = np.vstack([limg_cv, predict_np_rgb])
 
     # get depth
-    depth_img_temp = bf / predict_np_int * 100  # to cm
-    depth_img_rgb = GetDepthImg(depth_img)
+    depth_img_rgb = GetDepthImg(depth_img_int8)
     concat_img_depth = np.vstack([limg_cv, depth_img_rgb])
     concat = np.hstack([np.vstack([limg_cv, color_img]), np.vstack([predict_np_rgb, depth_img_rgb])])
+
+    MkdirSimple(output_concat_color)
+    MkdirSimple(output_concat_gray)
+    MkdirSimple(output_concat_depth)
+    MkdirSimple(output_depth)
+    MkdirSimple(output_color)
+    MkdirSimple(output_concat)
 
     cv2.imwrite(output_concat_color, concat_img_color)
     cv2.imwrite(output_concat_gray, concat_img_gray)
     cv2.imwrite(output_color, color_img)
-    cv2.imwrite(output_gray, predict_np)
     cv2.imwrite(output_depth, depth_img_rgb)
     cv2.imwrite(output_concat_depth, concat_img_depth)
     cv2.imwrite(output_concat, concat)
@@ -276,11 +302,11 @@ def main():
 
         start_time_inter = time.time()
         with torch.no_grad():
-            start = time()
+            start = time.time()
             pred_disp = model(limg_tensor, rimg_tensor)
 
             end_time_inter = time.time()
-            print("interface time :", end_time_inter - start_time_inter)
+            # print("interface time :", end_time_inter - start_time_inter)
 
         predict_np = pred_disp.squeeze().cpu().numpy()
 
